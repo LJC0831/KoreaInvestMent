@@ -18,7 +18,7 @@ def send_message(msg):
     """디스코드 메세지 전송"""
     now = datetime.datetime.now()
     message = {"content": f"[{now.strftime('%Y-%m-%d %H:%M:%S')}] {str(msg)}"}
-    requests.post(DISCORD_WEBHOOK_URL, data=message)
+    #requests.post(DISCORD_WEBHOOK_URL, data=message)
     print(message)
 
 def get_access_token():
@@ -179,7 +179,6 @@ def buy(code="005930", qty="1"):
     else:
         send_message(f"[매수 실패]{str(res.json())}")
         return False
-
 def sell(code="005930", qty="1"):
     """주식 시장가 매도"""
     PATH = "uapi/domestic-stock/v1/trading/order-cash"
@@ -207,11 +206,22 @@ def sell(code="005930", qty="1"):
     else:
         send_message(f"[매도 실패]{str(res.json())}")
         return False
+    
+def tradeName(code):
+    if (sym == "005930") :
+        symbol_list_nm = "삼성전자"
+    elif (sym == "030200") :
+        symbol_list_nm = "KT"
+    elif (sym == "094940") :
+        symbol_list_nm = "푸른기술"  
+    elif (sym == "081660") :
+        symbol_list_nm = "휠라홀딩스"    
+    return symbol_list_nm
 
 # 자동매매 시작
 try:
     ACCESS_TOKEN = get_access_token()
-    symbol_list = ["005930","035720","000660","069500"] # 매수 희망 종목 리스트
+    symbol_list = ["005930","030200","094940","081660"] # 매수 희망 종목 리스트 
     bought_list = [] # 매수 완료된 종목 리스트
     total_cash = get_balance() # 보유 현금 조회
     stock_dict = get_stock_balance() # 보유 주식 조회
@@ -241,34 +251,20 @@ try:
             stock_dict = get_stock_balance()
         if t_start < t_now < t_sell :  # AM 09:05 ~ PM 03:15 : 매수
             for sym in symbol_list:
-                if len(bought_list) < target_buy_count:
-                    if sym in bought_list:
-                        continue
-                    target_price = get_target_price(sym)
-                    current_price = get_current_price(sym)
-                    if target_price < current_price:
-                        buy_qty = 0  # 매수할 수량 초기화
-                        buy_qty = int(buy_amount // current_price)
-                        if buy_qty > 0:
-                            send_message(f"{sym} 목표가 달성({target_price} < {current_price}) 매수를 시도합니다.")
-                            result = buy(sym, buy_qty)
-                            if result:
-                                soldout = False
-                                bought_list.append(sym)
-                                get_stock_balance()
-                    time.sleep(1)
-            time.sleep(1)
-            if t_now.minute == 30 and t_now.second <= 5: 
-                get_stock_balance()
-                time.sleep(5)
-        if t_sell < t_now < t_exit:  # PM 03:15 ~ PM 03:20 : 일괄 매도
-            if soldout == False:
-                stock_dict = get_stock_balance()
-                for sym, qty in stock_dict.items():
-                    sell(sym, qty)
-                soldout = True
-                bought_list = []
+                target_price = get_target_price(sym)
+                current_price = get_current_price(sym)
+                
+                send_message(f"{tradeName(sym)} 현재가 ({current_price})원 ")
+                if sym in bought_list:
+                    continue
+                if target_price < current_price:
+                    buy_qty = 0  # 매수할 수량 초기화
+                    buy_qty = int(buy_amount // current_price)
+                    if buy_qty > 0:
+                        send_message(f"{tradeName(sym)} 목표가 달성({target_price} < {current_price}) ")   
                 time.sleep(1)
+            time.sleep(1)
+        
         if t_exit < t_now:  # PM 03:20 ~ :프로그램 종료
             send_message("프로그램을 종료합니다.")
             break
